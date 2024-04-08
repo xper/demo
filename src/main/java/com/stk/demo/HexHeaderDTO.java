@@ -16,7 +16,7 @@ public class HexHeaderDTO implements Serializable {
 
   @Override
   public String toString() {
-    return String.format("HeaderDTO(lLMagicNumber: %d, ucCrypType: %02X, ucTermType: %02X, ucMessageID: %02X, ucServiceID: %02X, usVersion: %04X)",
+    return String.format("HexHeaderDTO(lLMagicNumber: %d, ucCrypType: %02X, ucTermType: %02X, ucMessageID: %02X, ucServiceID: %02X, usVersion: %04X)",
         lLMagicNumber,
         (int) ucCrypType,
         (int) ucTermType,

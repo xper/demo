@@ -56,10 +56,10 @@ public class SocketThreadServer extends Thread {
       log.info("\n * nReadSize: {}", nReadSize);
       if (nReadSize > 128) {
         // 받아온 byte를 Object로 변환
-        HeaderDTO headerDTO = toObject(recvBuffer, HeaderDTO.class);
+        ObjHeaderDTO objHeaderDTO = toObject(recvBuffer, ObjHeaderDTO.class);
 
         // 확인을 위해 출력
-        log.info("\n * HeaderDTO: {}", headerDTO.toString());
+        log.info("\n * ObjHeaderDTO: {}", objHeaderDTO.toString());
       
       }
       pw = new PrintWriter(socket.getOutputStream());
