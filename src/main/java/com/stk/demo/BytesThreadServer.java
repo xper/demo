@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -23,10 +24,10 @@ public class BytesThreadServer extends Thread {
         this.socket = socket;
 
         this.headerInfos.add(new FieldInfo("lLMagicNumber", "long", 16));
-        this.headerInfos.add(new FieldInfo("ucCrypType", "char", 2));
-        this.headerInfos.add(new FieldInfo("ucTermType", "char", 2));
-        this.headerInfos.add(new FieldInfo("ucMessageID", "char", 2));
-        this.headerInfos.add(new FieldInfo("ucServiceID", "char", 2));
+        this.headerInfos.add(new FieldInfo("ucCrypType", "int", 2));
+        this.headerInfos.add(new FieldInfo("ucTermType", "int", 2));
+        this.headerInfos.add(new FieldInfo("ucMessageID", "int", 2));
+        this.headerInfos.add(new FieldInfo("ucServiceID", "int", 2));
         this.headerInfos.add(new FieldInfo("usVersion", "short", 4));
         // headerHexLength 계산
         for (FieldInfo info : this.headerInfos) {
@@ -35,11 +36,11 @@ public class BytesThreadServer extends Thread {
 
         log.info(String.format("* headerInfos: %d", this.headerInfos.size()));
         log.info(String.format("* headerHexLength: %d", this.headerHexLength));
-     }
+    }
 
     @SuppressWarnings("deprecation")
     public static <T> T bytesToObject(String hexString, ArrayList<FieldInfo> fieldInfos, Class<T> type)
-            throws IllegalAccessException, InstantiationException {
+            throws IllegalAccessException, InstantiationException, UnsupportedEncodingException {
         Object obj = null;
         try {
             obj = type.newInstance();
@@ -68,6 +69,9 @@ public class BytesThreadServer extends Thread {
                     case "int":
                         value = Integer.parseInt(hexValue, 16);
                         break;
+                    case "String":
+                        value = new String(hexValue.getBytes("UTF-8"), "UTF-8");
+                        break;
                     // 사용될 모든 타입 추가 해야함.
                 }
                 Field field = type.getDeclaredField(info.getFieldName()); // 해당 필드를 가져옴
@@ -79,6 +83,9 @@ public class BytesThreadServer extends Thread {
             if (idx < hexString.length()) {
                 log.warn(String.format("* hexString length is too long. hexString.length() %d", hexString.length()));
             }
+        } catch (UnsupportedEncodingException e) {
+            System.out.println(e.getMessage());
+            throw new UnsupportedEncodingException(e.getMessage());
         } catch (NoSuchFieldException e) {
             System.out.println(e.getMessage());
             throw new IllegalAccessException(e.getMessage());
