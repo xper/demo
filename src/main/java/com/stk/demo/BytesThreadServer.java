@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.net.Socket;
+import java.util.ArrayList;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,22 +16,22 @@ public class BytesThreadServer extends Thread {
     private Socket socket;
     private BufferedReader br = null;
     private PrintWriter pw = null;
-    private FieldInfo[] headerInfos = new FieldInfo[10];
+    private ArrayList<FieldInfo> headerInfos = new ArrayList<FieldInfo>();
 
     public BytesThreadServer(Socket socket) {
         this.socket = socket;
 
-        int idx = 0;
-        this.headerInfos[idx++] = new FieldInfo("lLMagicNumber", "long", 16);
-        this.headerInfos[idx++] = new FieldInfo("ucCrypType", "char", 2);
-        this.headerInfos[idx++] = new FieldInfo("ucTermType", "char", 2);
-        this.headerInfos[idx++] = new FieldInfo("ucMessageID", "char", 2);
-        this.headerInfos[idx++] = new FieldInfo("ucServiceID", "char", 2);
-        this.headerInfos[idx++] = new FieldInfo("usVersion", "short", 4);
+        headerInfos.add(new FieldInfo("lLMagicNumber", "long", 16));
+        headerInfos.add(new FieldInfo("ucCrypType", "char", 2));
+        headerInfos.add(new FieldInfo("ucTermType", "char", 2));
+        headerInfos.add(new FieldInfo("ucMessageID", "char", 2));
+        headerInfos.add(new FieldInfo("ucServiceID", "char", 2));
+        headerInfos.add(new FieldInfo("usVersion", "short", 4));
+        log.info("\n * headerInfos: {}", headerInfos.size());
      }
 
     @SuppressWarnings("deprecation")
-    public static <T> T bytesToObject(byte[] recvBuffer, int readSize, FieldInfo[] headerInfos, Class<T> type)
+    public static <T> T bytesToObject(byte[] recvBuffer, int readSize, ArrayList<FieldInfo> headerInfos, Class<T> type)
             throws IllegalAccessException, InstantiationException {
         Object obj = null;
         try {
@@ -45,6 +46,10 @@ public class BytesThreadServer extends Thread {
             log.info("\n * hexString: {}", hexString);
             int idx = 0;
             for (FieldInfo info : headerInfos) {
+                if (idx + info.getHexLength() > hexString.length()) {
+                    log.warn("\n * hexString length is not enough. hexString.length() ", hexString.length());
+                    break;
+                }
                 String hexValue = hexString.substring(idx, idx + info.getHexLength());
                 Object value = null;
                 switch (info.getFieldType()) {
@@ -59,10 +64,14 @@ public class BytesThreadServer extends Thread {
                         break;
                     // 사용될 모든 타입 추가 해야함.
                 }
-                Field field = type.getDeclaredField(info.getFieldName());
-                field.setAccessible(true);
-                field.set(obj, value);
+                Field field = type.getDeclaredField(info.getFieldName()); // 해당 필드를 가져옴
+
+                field.setAccessible(true);// private field에 접근하기 위해
+                field.set(obj, value); // obj에 value를 set
                 idx += info.getHexLength();
+            }
+            if (idx < hexString.length()) {
+                log.warn("\n * hexString length is too long. hexString.length() ", hexString.length());
             }
         } catch (NoSuchFieldException e) {
             System.out.println(e.getMessage());
