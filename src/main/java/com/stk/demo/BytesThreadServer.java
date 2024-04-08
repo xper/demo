@@ -17,37 +17,37 @@ public class BytesThreadServer extends Thread {
     private BufferedReader br = null;
     private PrintWriter pw = null;
     private ArrayList<FieldInfo> headerInfos = new ArrayList<FieldInfo>();
+    private int headerHexLength = 0;
 
     public BytesThreadServer(Socket socket) {
         this.socket = socket;
 
-        headerInfos.add(new FieldInfo("lLMagicNumber", "long", 16));
-        headerInfos.add(new FieldInfo("ucCrypType", "char", 2));
-        headerInfos.add(new FieldInfo("ucTermType", "char", 2));
-        headerInfos.add(new FieldInfo("ucMessageID", "char", 2));
-        headerInfos.add(new FieldInfo("ucServiceID", "char", 2));
-        headerInfos.add(new FieldInfo("usVersion", "short", 4));
-        log.info("\n * headerInfos: {}", headerInfos.size());
+        this.headerInfos.add(new FieldInfo("lLMagicNumber", "long", 16));
+        this.headerInfos.add(new FieldInfo("ucCrypType", "char", 2));
+        this.headerInfos.add(new FieldInfo("ucTermType", "char", 2));
+        this.headerInfos.add(new FieldInfo("ucMessageID", "char", 2));
+        this.headerInfos.add(new FieldInfo("ucServiceID", "char", 2));
+        this.headerInfos.add(new FieldInfo("usVersion", "short", 4));
+        // headerHexLength 계산
+        for (FieldInfo info : this.headerInfos) {
+            this.headerHexLength += info.getHexLength();
+        }
+
+        log.info(String.format("* headerInfos: %d", this.headerInfos.size()));
+        log.info(String.format("* headerHexLength: %d", this.headerHexLength));
      }
 
     @SuppressWarnings("deprecation")
-    public static <T> T bytesToObject(byte[] recvBuffer, int readSize, ArrayList<FieldInfo> headerInfos, Class<T> type)
+    public static <T> T bytesToObject(String hexString, ArrayList<FieldInfo> fieldInfos, Class<T> type)
             throws IllegalAccessException, InstantiationException {
         Object obj = null;
         try {
             obj = type.newInstance();
 
-            // 받아온 byte를 hexString으로 변환
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < readSize; i++) {
-                sb.append(String.format("%02X", recvBuffer[i]));
-            }
-            String hexString = sb.toString();
-            log.info("\n * hexString: {}", hexString);
             int idx = 0;
-            for (FieldInfo info : headerInfos) {
+            for (FieldInfo info : fieldInfos) {
                 if (idx + info.getHexLength() > hexString.length()) {
-                    log.warn("\n * hexString length is not enough. hexString.length() ", hexString.length());
+                    log.warn(String.format("* hexString length is not enough. hexString.length() %d", hexString.length()));
                     break;
                 }
                 String hexValue = hexString.substring(idx, idx + info.getHexLength());
@@ -62,6 +62,12 @@ public class BytesThreadServer extends Thread {
                     case "short":
                         value = Short.parseShort(hexValue, 16);
                         break;
+                    case "byte":
+                        value = Byte.parseByte(hexValue, 16);
+                        break;
+                    case "int":
+                        value = Integer.parseInt(hexValue, 16);
+                        break;
                     // 사용될 모든 타입 추가 해야함.
                 }
                 Field field = type.getDeclaredField(info.getFieldName()); // 해당 필드를 가져옴
@@ -71,7 +77,7 @@ public class BytesThreadServer extends Thread {
                 idx += info.getHexLength();
             }
             if (idx < hexString.length()) {
-                log.warn("\n * hexString length is too long. hexString.length() ", hexString.length());
+                log.warn(String.format("* hexString length is too long. hexString.length() %d", hexString.length()));
             }
         } catch (NoSuchFieldException e) {
             System.out.println(e.getMessage());
@@ -87,7 +93,7 @@ public class BytesThreadServer extends Thread {
     public void run() {
         try {
             String connIp = socket.getInetAddress().getHostAddress();
-            log.info(String.format("\n * %s 에서 연결 시도.", connIp));
+            log.info(String.format("* connection from %s", connIp));
             // 수신 버퍼의 최대 사이즈 지정
             int maxBufferSize = 1024;
             // 버퍼 생성
@@ -97,17 +103,26 @@ public class BytesThreadServer extends Thread {
             // 버퍼(recvBuffer) 인자로 넣어서 받음. 반환 값은 받아온 size
             int readSize = is.read(recvBuffer);
             // 받아온 값이 0보다 클때
-            log.info("\n * nReadSize: {}", readSize);
+            log.info("* nReadSize: {}", readSize);
             if (readSize > 1) {
                 
+                // 받아온 byte를 hexString으로 변환
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < readSize; i++) {
+                    sb.append(String.format("%02X", recvBuffer[i]));
+                }
+                String headerHexString = sb.toString().substring(0, this.headerHexLength);
+                log.info("* headerHexString: {}", headerHexString);
                 
                 // 받아온 byte[]를 Object로 변환
-                HexHeaderDTO headerDTO = bytesToObject(recvBuffer, readSize, this.headerInfos, HexHeaderDTO.class);
+                HexHeaderDTO headerDTO = bytesToObject(headerHexString, this.headerInfos, HexHeaderDTO.class);
 
                 // 확인을 위해 출력
-                log.info("\n * HexHeaderDTO: {}", headerDTO.toString());
+                log.info(String.format("* HexHeaderDTO: \n * %s", headerDTO.toString()));
 
                 
+                String bodyHexString = sb.toString().substring(this.headerHexLength);
+                log.info("* bodyHexString: {}", bodyHexString);
 
             }
             pw = new PrintWriter(socket.getOutputStream());
