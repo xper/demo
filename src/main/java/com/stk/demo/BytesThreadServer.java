@@ -76,7 +76,16 @@ public class BytesThreadServer extends Thread {
                 log.info(String.format("* bodyInfos: %d", bodyInfos.size()));
 
                 IN0201001DTO bodyDTO = MsgUtil.bytesToObject(bodyHexString, bodyInfos, IN0201001DTO.class);
-                log.info(String.format("* bodyDTO: \n * %s", bodyDTO.toString()));
+
+                // Merge headerDTO and bodyDTO
+                bodyDTO.setLLMagicNumber(headerDTO.getLLMagicNumber());
+                bodyDTO.setUcCrypType(headerDTO.getUcCrypType());
+                bodyDTO.setUcTermType(headerDTO.getUcTermType());
+                bodyDTO.setUcMessageID(headerDTO.getUcMessageID());
+                bodyDTO.setUcServiceID(headerDTO.getUcServiceID());
+                bodyDTO.setUsVersion(headerDTO.getUsVersion());
+                
+                log.info(String.format("* bodyDTO: \n%s", bodyDTO.toString()));
             }
             pw = new PrintWriter(socket.getOutputStream());
             // 클라이언트에 문자열 전송
