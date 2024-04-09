@@ -2,8 +2,9 @@ package com.stk.demo.dto;
 
 import java.io.Serializable;
 
+import lombok.Data;
 import lombok.NoArgsConstructor;
-
+@Data
 @NoArgsConstructor
 public class HeaderDTO implements Serializable {
   long lLMagicNumber = 0x3812121281282828L; // 0x3812121281282828L: 4040311686390360104 Betman, vtx, 발매, 내부 공통 전문 시작

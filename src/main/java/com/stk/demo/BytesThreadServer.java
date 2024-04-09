@@ -10,6 +10,7 @@ import java.net.Socket;
 import java.util.ArrayList;
 
 import com.stk.demo.dto.HeaderDTO;
+import com.stk.demo.dto.IN0201001DTO;
 import com.stk.demo.lib.MsgUtil;
 
 import lombok.extern.slf4j.Slf4j;
@@ -29,55 +30,12 @@ public class BytesThreadServer extends Thread {
     }
 
     public void initHeaderInfos() {
-        this.headerInfos.add(new FieldInfo("lLMagicNumber", "long", 16));
-        this.headerInfos.add(new FieldInfo("ucCrypType", "int", 2));
-        this.headerInfos.add(new FieldInfo("ucTermType", "int", 2));
-        this.headerInfos.add(new FieldInfo("ucMessageID", "int", 2));
-        this.headerInfos.add(new FieldInfo("ucServiceID", "int", 2));
-        this.headerInfos.add(new FieldInfo("usVersion", "short", 4));
-        // headerHexLength 계산
-        for (FieldInfo info : this.headerInfos) {
-            this.headerHexLength += info.getHexLength();
-        }
-
+        this.headerInfos = MsgUtil.getHeaderInfos();
+        this.headerHexLength = MsgUtil.getHeaderHexLength(this.headerInfos);
         log.info(String.format("* headerInfos: %d", this.headerInfos.size()));
         log.info(String.format("* headerHexLength: %d", this.headerHexLength));
     }
 
-    @SuppressWarnings("deprecation")
-    public static <T> T bytesToObject(String hexString, ArrayList<FieldInfo> fieldInfos, Class<T> type)
-            throws IllegalAccessException, InstantiationException {
-        Object obj = null;
-        try {
-            obj = type.newInstance();
-
-            int idx = 0;
-            for (FieldInfo info : fieldInfos) {
-                if (idx + info.getHexLength() > hexString.length()) {
-                    log.warn(String.format("* hexString length is not enough. hexString.length() %d", hexString.length()));
-                    break;
-                }
-                String hexValue = hexString.substring(idx, idx + info.getHexLength());
-                Object value = MsgUtil.parseTypeFromHexStr(hexValue, info.getFieldType());
-                
-                Field field = type.getDeclaredField(info.getFieldName()); // 해당 필드를 가져옴
-
-                field.setAccessible(true);// private field에 접근하기 위해
-                field.set(obj, value); // obj에 value를 set
-                idx += info.getHexLength();
-            }
-            if (idx < hexString.length()) {
-                log.warn(String.format("* hexString length is too long. hexString.length() %d", hexString.length()));
-            }
-        } catch (NoSuchFieldException e) {
-            System.out.println(e.getMessage());
-            throw new IllegalAccessException(e.getMessage());
-        } catch (IllegalAccessException e) {
-            System.out.println(e.getMessage());
-            throw e;
-        }
-        return type.cast(obj);
-    }
 
     // 단순 문자열 Thread server
     public void run() {
@@ -105,7 +63,7 @@ public class BytesThreadServer extends Thread {
                 log.info("* headerHexString: {}", headerHexString);
                 
                 // 받아온 byte[]를 Object로 변환
-                HeaderDTO headerDTO = bytesToObject(headerHexString, this.headerInfos, HeaderDTO.class);
+                HeaderDTO headerDTO = MsgUtil.bytesToObject(headerHexString, this.headerInfos, HeaderDTO.class);
 
                 // 확인을 위해 출력
                 log.info(String.format("* HeaderDTO: \n * %s", headerDTO.toString()));
@@ -114,6 +72,11 @@ public class BytesThreadServer extends Thread {
                 String bodyHexString = sb.toString().substring(this.headerHexLength);
                 log.info("* bodyHexString: {}", bodyHexString);
 
+                ArrayList<FieldInfo> bodyInfos = MsgUtil.getFieldInfos(headerDTO);
+                log.info(String.format("* bodyInfos: %d", bodyInfos.size()));
+
+                IN0201001DTO bodyDTO = MsgUtil.bytesToObject(bodyHexString, bodyInfos, IN0201001DTO.class);
+                log.info(String.format("* bodyDTO: \n * %s", bodyDTO.toString()));
             }
             pw = new PrintWriter(socket.getOutputStream());
             // 클라이언트에 문자열 전송
@@ -124,7 +87,7 @@ public class BytesThreadServer extends Thread {
             log.error("error", e);
         } catch (IllegalAccessException e) {
             log.error("error", e);
-        } catch (InstantiationException e) {
+        } catch (RuntimeException e) {
             log.error("error", e);
         } finally {
             try {
