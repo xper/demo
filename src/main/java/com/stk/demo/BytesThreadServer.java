@@ -9,7 +9,7 @@ import java.lang.reflect.Field;
 import java.net.Socket;
 import java.util.ArrayList;
 
-import com.stk.demo.dto.HexHeaderDTO;
+import com.stk.demo.dto.HeaderDTO;
 import com.stk.demo.lib.MsgUtil;
 
 import lombok.extern.slf4j.Slf4j;
@@ -105,10 +105,10 @@ public class BytesThreadServer extends Thread {
                 log.info("* headerHexString: {}", headerHexString);
                 
                 // 받아온 byte[]를 Object로 변환
-                HexHeaderDTO headerDTO = bytesToObject(headerHexString, this.headerInfos, HexHeaderDTO.class);
+                HeaderDTO headerDTO = bytesToObject(headerHexString, this.headerInfos, HeaderDTO.class);
 
                 // 확인을 위해 출력
-                log.info(String.format("* HexHeaderDTO: \n * %s", headerDTO.toString()));
+                log.info(String.format("* HeaderDTO: \n * %s", headerDTO.toString()));
 
                 
                 String bodyHexString = sb.toString().substring(this.headerHexLength);

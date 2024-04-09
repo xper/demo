@@ -7,7 +7,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.net.Socket;
 
-import com.stk.demo.dto.HexHeaderDTO;
+import com.stk.demo.dto.HeaderDTO;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -72,7 +72,7 @@ public class HexStringThreadServer extends Thread {
                 log.info("\n * hexString: {}", hexString);
                 
                 // hexString을 Object로 변환
-                HexHeaderDTO headerDTO = hexStringToObject(hexString, HexHeaderDTO.class);
+                HeaderDTO headerDTO = hexStringToObject(hexString, HeaderDTO.class);
 
                 // 확인을 위해 출력
                 log.info("\n * HexHeaderDTO: {}", headerDTO.toString());
