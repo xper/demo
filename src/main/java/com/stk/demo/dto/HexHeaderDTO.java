@@ -1,4 +1,4 @@
-package com.stk.demo;
+package com.stk.demo.dto;
 
 import java.io.Serializable;
 

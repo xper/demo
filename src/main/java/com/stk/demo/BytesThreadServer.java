@@ -9,6 +9,9 @@ import java.lang.reflect.Field;
 import java.net.Socket;
 import java.util.ArrayList;
 
+import com.stk.demo.dto.HexHeaderDTO;
+import com.stk.demo.lib.MsgUtil;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -22,7 +25,10 @@ public class BytesThreadServer extends Thread {
 
     public BytesThreadServer(Socket socket) {
         this.socket = socket;
+        this.initHeaderInfos();
+    }
 
+    public void initHeaderInfos() {
         this.headerInfos.add(new FieldInfo("lLMagicNumber", "long", 16));
         this.headerInfos.add(new FieldInfo("ucCrypType", "int", 2));
         this.headerInfos.add(new FieldInfo("ucTermType", "int", 2));
@@ -40,7 +46,7 @@ public class BytesThreadServer extends Thread {
 
     @SuppressWarnings("deprecation")
     public static <T> T bytesToObject(String hexString, ArrayList<FieldInfo> fieldInfos, Class<T> type)
-            throws IllegalAccessException, InstantiationException, UnsupportedEncodingException {
+            throws IllegalAccessException, InstantiationException {
         Object obj = null;
         try {
             obj = type.newInstance();
@@ -52,28 +58,8 @@ public class BytesThreadServer extends Thread {
                     break;
                 }
                 String hexValue = hexString.substring(idx, idx + info.getHexLength());
-                Object value = null;
-                switch (info.getFieldType()) {
-                    case "long":
-                        value = Long.parseLong(hexValue, 16);
-                        break;
-                    case "char":
-                        value = (char) Integer.parseInt(hexValue, 16);
-                        break;
-                    case "short":
-                        value = Short.parseShort(hexValue, 16);
-                        break;
-                    case "byte":
-                        value = Byte.parseByte(hexValue, 16);
-                        break;
-                    case "int":
-                        value = Integer.parseInt(hexValue, 16);
-                        break;
-                    case "String":
-                        value = new String(hexValue.getBytes("UTF-8"), "UTF-8");
-                        break;
-                    // 사용될 모든 타입 추가 해야함.
-                }
+                Object value = MsgUtil.parseTypeFromHexStr(hexValue, info.getFieldType());
+                
                 Field field = type.getDeclaredField(info.getFieldName()); // 해당 필드를 가져옴
 
                 field.setAccessible(true);// private field에 접근하기 위해
@@ -83,9 +69,6 @@ public class BytesThreadServer extends Thread {
             if (idx < hexString.length()) {
                 log.warn(String.format("* hexString length is too long. hexString.length() %d", hexString.length()));
             }
-        } catch (UnsupportedEncodingException e) {
-            System.out.println(e.getMessage());
-            throw new UnsupportedEncodingException(e.getMessage());
         } catch (NoSuchFieldException e) {
             System.out.println(e.getMessage());
             throw new IllegalAccessException(e.getMessage());

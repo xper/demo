@@ -7,6 +7,8 @@ import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.net.Socket;
 
+import com.stk.demo.dto.HexHeaderDTO;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
